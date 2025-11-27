@@ -97,12 +97,11 @@ export const Route = createFileRoute("/resources/")({
   head: () => ({
     meta: [
       {
-        title: "MdSadiqMd | Resources",
+        title: "sadiq.tech | Resources",
       },
     ],
   }),
   loader: async ({ context }) => {
-    // Prefetch resources and tags on server
     await Promise.all([
       context.queryClient.prefetchQuery(
         context.trpc.resources.list.queryOptions(),
@@ -115,7 +114,6 @@ export const Route = createFileRoute("/resources/")({
 function ResourcesPage() {
   const trpc = useTRPC();
 
-  // Queries
   const { data: resourcesData, refetch: refetchResources } = useQuery(
     trpc.resources.list.queryOptions(),
   );
@@ -126,7 +124,6 @@ function ResourcesPage() {
   const resources = (resourcesData as Resource[] | undefined) ?? [];
   const tags = (tagsData as Tag[] | undefined) ?? [];
 
-  // Mutations
   const { mutateAsync: addResource } = useMutation({
     ...trpc.resources.add.mutationOptions(),
     onSuccess: () => {
