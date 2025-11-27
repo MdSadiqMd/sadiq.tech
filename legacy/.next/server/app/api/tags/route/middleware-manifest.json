@@ -1,0 +1,41 @@
+{
+  "sorted_middleware": [
+    "/api/tags/route"
+  ],
+  "middleware": {},
+  "instrumentation": null,
+  "functions": {
+    "/api/tags/route": {
+      "files": [
+        "server/server-reference-manifest.js",
+        "server/middleware-build-manifest.js",
+        "server/middleware-react-loadable-manifest.js",
+        "server/next-font-manifest.js",
+        "server/interception-route-rewrite-manifest.js",
+        "server/app/api/tags/route_client-reference-manifest.js",
+        "server/edge/chunks/_fc8646._.js",
+        "server/edge/chunks/node_modules_@octokit_plugin-rest-endpoint-methods_dist-src_577daf._.js",
+        "server/edge/chunks/node_modules_bc0d2b._.js",
+        "server/edge/chunks/[root of the server]__d212f7._.js",
+        "server/edge/chunks/edge-wrapper_86309e.js"
+      ],
+      "name": "/api/tags",
+      "page": "/api/tags/route",
+      "matchers": [
+        {
+          "regexp": "^/api/tags(?:/)?$",
+          "originalSource": "/api/tags"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "development",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "e0nRUuD9R41vtL/IYH/5B9LA0Pv+vnTxVst7OQWNG5w=",
+        "__NEXT_PREVIEW_MODE_ID": "2471dc233e22559ddce3a320d0a4560b",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "229eb8ca285f395a4cda7a820abe5a6db166dc720aeaa1e2c2971884c3a3c67d",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "b3dc105468e60a23f6ff186b6a59fccee2e43f99d8e0a80e6b73dfabdb90f5a6"
+      }
+    }
+  }
+}

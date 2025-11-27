@@ -1,0 +1,6 @@
+{
+  "/page": "app/page.js",
+  "/resources/page": "app/resources/page.js",
+  "/api/resources/route": "app-edge-has-no-entrypoint",
+  "/api/tags/route": "app-edge-has-no-entrypoint"
+}
