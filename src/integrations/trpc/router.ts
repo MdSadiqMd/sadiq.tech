@@ -1,68 +1,8 @@
 import { z } from "zod";
-import { Octokit } from "@octokit/rest";
 import { createTRPCRouter, publicProcedure } from "./init";
 import type { TRPCRouterRecord } from "@trpc/server";
+import { getGistContent, updateGist } from "@/utils/octokit";
 
-// Initialize Octokit - will use GITHUB_TOKEN from environment
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
-});
-
-// Helper functions for GitHub Gist operations
-async function getGistContent(gistId: string) {
-  try {
-    const response = await octokit.gists.get({ gist_id: gistId });
-    const files = response.data.files;
-    if (!files) return null;
-
-    const firstFile = Object.values(files)[0];
-    if (firstFile?.content) {
-      return {
-        data: JSON.parse(firstFile.content),
-        filename: firstFile.filename || "data.json",
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error("Error fetching gist:", error);
-    throw error;
-  }
-}
-
-async function updateGist(gistId: string, content: any, filename: string) {
-  try {
-    await octokit.gists.update({
-      gist_id: gistId,
-      files: {
-        [filename]: {
-          content: JSON.stringify(content, null, 2),
-        },
-      },
-    });
-  } catch (error) {
-    console.error("Error updating gist:", error);
-    throw error;
-  }
-}
-
-const todos = [
-  { id: 1, name: "Get groceries" },
-  { id: 2, name: "Buy a new phone" },
-  { id: 3, name: "Finish the project" },
-];
-
-const todosRouter = {
-  list: publicProcedure.query(() => todos),
-  add: publicProcedure
-    .input(z.object({ name: z.string() }))
-    .mutation(({ input }) => {
-      const newTodo = { id: todos.length + 1, name: input.name };
-      todos.push(newTodo);
-      return newTodo;
-    }),
-} satisfies TRPCRouterRecord;
-
-// Resources Router
 const resourcesRouter = {
   list: publicProcedure.query(async () => {
     const gistId = process.env.RESOURCES_GIST_ID;
@@ -126,7 +66,6 @@ const resourcesRouter = {
     }),
 } satisfies TRPCRouterRecord;
 
-// Tags Router
 const tagsRouter = {
   list: publicProcedure.query(async () => {
     const gistId = process.env.TAGS_GIST_ID;
@@ -148,9 +87,8 @@ const tagsRouter = {
       if (!gistId) throw new Error("TAGS_GIST_ID not configured");
 
       const gistContent = await getGistContent(gistId);
-      const tags = gistContent?.data || [];
 
-      // Check if tag already exists
+      const tags = gistContent?.data || [];
       if (!tags.find((t: any) => t.name === input.name)) {
         tags.push(input);
         await updateGist(gistId, tags, gistContent?.filename || "tags.json");
@@ -161,7 +99,6 @@ const tagsRouter = {
 } satisfies TRPCRouterRecord;
 
 export const trpcRouter = createTRPCRouter({
-  todos: todosRouter,
   resources: resourcesRouter,
   tags: tagsRouter,
 });
