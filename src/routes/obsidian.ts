@@ -10,13 +10,21 @@ async function handler({ request }: { request: Request }) {
   const html = await response.text();
 
   // Rewrite all absolute paths to include /obsidian prefix
-  // Use (?!obsidian\/) to only skip paths that are /obsidian/, not /obsidian-vault
   const rewrittenHtml = html
-    .replace(/href="\/(?!obsidian\/)/g, 'href="/obsidian/')
-    .replace(/src="\/(?!obsidian\/)/g, 'src="/obsidian/')
-    .replace(/url\(\/(?!obsidian\/)/g, 'url(/obsidian/')
-    .replace(/url\("\/(?!obsidian\/)/g, 'url("/obsidian/')
-    .replace(/url\('\/(?!obsidian\/)/g, "url('/obsidian/");
+    // Rewrite href attributes - paths starting with /
+    .replace(/href="\/(?!obsidian)/g, 'href="/obsidian/')
+    // Rewrite href attributes - vault names without leading /
+    .replace(/href="(obsidian-vault|self-space|artificial-intelligence)/g, 'href="/obsidian/$1')
+    // Rewrite href in onclick and other attributes
+    .replace(/href='(obsidian-vault|self-space|artificial-intelligence)/g, "href='/obsidian/$1")
+    // Rewrite data-slug attributes (used by Quartz for routing)
+    .replace(/data-slug="(obsidian-vault|self-space|artificial-intelligence)/g, 'data-slug="/obsidian/$1')
+    // Rewrite src attributes
+    .replace(/src="\/(?!obsidian)/g, 'src="/obsidian/')
+    // Rewrite CSS url() functions
+    .replace(/url\(\/(?!obsidian)/g, 'url(/obsidian/')
+    .replace(/url\("\/(?!obsidian)/g, 'url("/obsidian/')
+    .replace(/url\('\/(?!obsidian)/g, "url('/obsidian/");
 
   return new Response(rewrittenHtml, {
     headers: {
