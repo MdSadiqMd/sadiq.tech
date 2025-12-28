@@ -10,16 +10,13 @@ async function handler({ request }: { request: Request }) {
   const html = await response.text();
 
   // Rewrite all absolute paths to include /obsidian prefix
+  // Use (?!obsidian\/) to only skip paths that are /obsidian/, not /obsidian-vault
   const rewrittenHtml = html
-    // Rewrite href attributes - both / and vault paths
-    .replace(/href="\/(?!obsidian)/g, 'href="/obsidian/')
-    .replace(/href="(obsidian-vault|self-space|artificial-intelligence)/g, 'href="/obsidian/$1')
-    // Rewrite src attributes
-    .replace(/src="\/(?!obsidian)/g, 'src="/obsidian/')
-    // Rewrite CSS url() functions
-    .replace(/url\(\/(?!obsidian)/g, 'url(/obsidian/')
-    .replace(/url\("\/(?!obsidian)/g, 'url("/obsidian/')
-    .replace(/url\('\/(?!obsidian)/g, "url('/obsidian/");
+    .replace(/href="\/(?!obsidian\/)/g, 'href="/obsidian/')
+    .replace(/src="\/(?!obsidian\/)/g, 'src="/obsidian/')
+    .replace(/url\(\/(?!obsidian\/)/g, 'url(/obsidian/')
+    .replace(/url\("\/(?!obsidian\/)/g, 'url("/obsidian/')
+    .replace(/url\('\/(?!obsidian\/)/g, "url('/obsidian/");
 
   return new Response(rewrittenHtml, {
     headers: {
