@@ -4,12 +4,23 @@ const OBSIDIAN_PORTAL_URL = "https://obsidian-portal.pages.dev";
 
 async function handler({ request }: { request: Request }) {
   const url = new URL(request.url);
-  const targetUrl = `${OBSIDIAN_PORTAL_URL}/obsidian${url.search}`;
+  const targetUrl = `${OBSIDIAN_PORTAL_URL}${url.search}`;
 
   const response = await fetch(targetUrl);
   const html = await response.text();
 
-  return new Response(html, {
+  // Rewrite all absolute paths to include /obsidian prefix
+  const rewrittenHtml = html
+    // Rewrite href attributes
+    .replace(/href="\/(?!obsidian)/g, 'href="/obsidian/')
+    // Rewrite src attributes
+    .replace(/src="\/(?!obsidian)/g, 'src="/obsidian/')
+    // Rewrite CSS url() functions
+    .replace(/url\(\/(?!obsidian)/g, 'url(/obsidian/')
+    .replace(/url\("\/(?!obsidian)/g, 'url("/obsidian/')
+    .replace(/url\('\/(?!obsidian)/g, "url('/obsidian/");
+
+  return new Response(rewrittenHtml, {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=3600",
