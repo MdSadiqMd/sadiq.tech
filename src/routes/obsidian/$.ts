@@ -14,11 +14,6 @@ const NAVIGATION_FIX_SCRIPT = `
     if (url && typeof url === 'string') {
       if (url.startsWith('/') && !url.startsWith(BASE_PATH)) {
         url = BASE_PATH + url;
-      } else if (!url.startsWith('/') && !url.startsWith('http') && !url.startsWith('#')) {
-        const currentPath = window.location.pathname;
-        if (!currentPath.startsWith(BASE_PATH)) {
-          url = BASE_PATH + '/' + url;
-        }
       }
     }
     return originalPushState.call(this, state, title, url);
@@ -43,15 +38,29 @@ const NAVIGATION_FIX_SCRIPT = `
     const href = link.getAttribute('href');
     if (!href) return;
     
-    // Skip external links, anchors, and already-correct paths
-    if (href.startsWith('http') || href.startsWith('#') || href.startsWith(BASE_PATH)) return;
+    // Skip external links and anchors
+    if (href.startsWith('http') || href.startsWith('#')) return;
+    
+    // Already correct
+    if (href.startsWith(BASE_PATH + '/')) return;
     
     // Fix absolute paths that don't have /obsidian
-    if (href.startsWith('/')) {
+    if (href.startsWith('/') && !href.startsWith(BASE_PATH)) {
       e.preventDefault();
       e.stopPropagation();
       window.location.href = BASE_PATH + href;
       return;
+    }
+    
+    // Fix relative paths with ../ that would escape /obsidian
+    if (href.startsWith('../') || href.startsWith('./')) {
+      const resolved = new URL(href, window.location.href).pathname;
+      if (!resolved.startsWith(BASE_PATH)) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = BASE_PATH + resolved;
+        return;
+      }
     }
   }, true);
 })();
@@ -68,15 +77,33 @@ async function handler({ request, params }: { request: Request; params: { _splat
     const response = await fetch(targetUrl);
     const contentType = response.headers.get("content-type") || "";
 
-    // For HTML content, inject navigation fix script
+    // For HTML content, inject navigation fix script and rewrite URLs
     if (contentType.includes("text/html")) {
       const html = await response.text();
       const rewrittenHtml = html
         .replace('</head>', NAVIGATION_FIX_SCRIPT + '</head>')
-        // Still rewrite static assets
+        // Rewrite relative paths starting with ../
+        .replace(/href="\.\.\/obsidian-vault/g, 'href="/obsidian/obsidian-vault')
+        .replace(/href="\.\.\/self-space/g, 'href="/obsidian/self-space')
+        .replace(/href="\.\.\/artificial-intelligence/g, 'href="/obsidian/artificial-intelligence')
+        .replace(/href='\.\.\/obsidian-vault/g, "href='/obsidian/obsidian-vault")
+        .replace(/href='\.\.\/self-space/g, "href='/obsidian/self-space")
+        .replace(/href='\.\.\/artificial-intelligence/g, "href='/obsidian/artificial-intelligence")
+        // Rewrite relative paths starting with ./
+        .replace(/href="\.\/obsidian-vault/g, 'href="/obsidian/obsidian-vault')
+        .replace(/href="\.\/self-space/g, 'href="/obsidian/self-space')
+        .replace(/href="\.\/artificial-intelligence/g, 'href="/obsidian/artificial-intelligence')
+        // Rewrite absolute paths
+        .replace(/href="\/(?!obsidian)/g, 'href="/obsidian/')
+        .replace(/href='\/(?!obsidian)/g, "href='/obsidian/")
+        // Rewrite ../ to go to obsidian root
+        .replace(/href="\.\.\/"/g, 'href="/obsidian/"')
+        .replace(/href='\.\.\/'/g, "href='/obsidian/'")
+        .replace(/href="\.\."/g, 'href="/obsidian/"')
+        .replace(/href='\.\.'/g, "href='/obsidian/'")
+        // Rewrite static assets
         .replace(/src="\/(?!obsidian)/g, 'src="/obsidian/')
         .replace(/src='\/(?!obsidian)/g, "src='/obsidian/")
-        .replace(/href="\/(?!obsidian)([^"]*\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))/g, 'href="/obsidian/$1')
         .replace(/url\(\/(?!obsidian)/g, 'url(/obsidian/')
         .replace(/url\("\/(?!obsidian)/g, 'url("/obsidian/')
         .replace(/url\('\/(?!obsidian)/g, "url('/obsidian/");
@@ -85,7 +112,7 @@ async function handler({ request, params }: { request: Request; params: { _splat
         status: response.status,
         headers: {
           "content-type": "text/html; charset=utf-8",
-          "cache-control": "public, max-age=3600",
+          "cache-control": "no-cache",
         },
       });
     }
@@ -102,7 +129,7 @@ async function handler({ request, params }: { request: Request; params: { _splat
         status: response.status,
         headers: {
           "content-type": contentType,
-          "cache-control": response.headers.get("cache-control") || "public, max-age=3600",
+          "cache-control": "no-cache",
         },
       });
     }
@@ -119,7 +146,7 @@ async function handler({ request, params }: { request: Request; params: { _splat
         status: response.status,
         headers: {
           "content-type": contentType,
-          "cache-control": response.headers.get("cache-control") || "public, max-age=3600",
+          "cache-control": "no-cache",
         },
       });
     }
