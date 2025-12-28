@@ -16,17 +16,19 @@ async function handler({ request, params }: { request: Request; params: { _splat
     if (contentType.includes("text/html")) {
       const html = await response.text();
       const rewrittenHtml = html
-        // Rewrite href attributes - paths starting with /
+        // Rewrite href attributes
         .replace(/href="\/(?!obsidian)/g, 'href="/obsidian/')
-        // Rewrite href attributes - vault names without leading / (double quotes)
+        .replace(/href='\/(?!obsidian)/g, "href='/obsidian/")
         .replace(/href="(obsidian-vault|self-space|artificial-intelligence)/g, 'href="/obsidian/$1')
-        // Rewrite href attributes - vault names without leading / (single quotes)
         .replace(/href='(obsidian-vault|self-space|artificial-intelligence)/g, "href='/obsidian/$1")
-        // Rewrite data-slug attributes (used by Quartz for routing)
+        // Rewrite data-slug attributes (CRITICAL for Quartz SPA routing)
+        .replace(/data-slug="\/(?!obsidian)/g, 'data-slug="/obsidian/')
+        .replace(/data-slug='\/(?!obsidian)/g, "data-slug='/obsidian/")
         .replace(/data-slug="(obsidian-vault|self-space|artificial-intelligence)/g, 'data-slug="/obsidian/$1')
         .replace(/data-slug='(obsidian-vault|self-space|artificial-intelligence)/g, "data-slug='/obsidian/$1")
         // Rewrite src attributes  
         .replace(/src="\/(?!obsidian)/g, 'src="/obsidian/')
+        .replace(/src='\/(?!obsidian)/g, "src='/obsidian/")
         // Rewrite CSS url() functions
         .replace(/url\(\/(?!obsidian)/g, 'url(/obsidian/')
         .replace(/url\("\/(?!obsidian)/g, 'url("/obsidian/')
@@ -41,40 +43,43 @@ async function handler({ request, params }: { request: Request; params: { _splat
       });
     }
 
-    // For JavaScript, rewrite navigation paths more aggressively
+    // For JavaScript, rewrite navigation paths comprehensively
     if (contentType.includes("javascript") || contentType.includes("application/javascript")) {
       const js = await response.text();
       const rewrittenJs = js
-        // Rewrite string literals for paths - both / and vault paths
+        // Rewrite string literals for absolute paths
         .replace(/"\/(?!obsidian)/g, '"/obsidian/')
         .replace(/'\/(?!obsidian)/g, "'/obsidian/")
-        // Rewrite vault names at start of strings (double quotes)
+        // Rewrite vault names in strings (with trailing slash)
         .replace(/"(obsidian-vault|self-space|artificial-intelligence)\//g, '"/obsidian/$1/')
-        .replace(/"(obsidian-vault|self-space|artificial-intelligence)"/g, '"/obsidian/$1"')
-        // Rewrite vault names at start of strings (single quotes)
         .replace(/'(obsidian-vault|self-space|artificial-intelligence)\//g, "'/obsidian/$1/")
+        // Rewrite vault names in strings (without trailing slash, end of string)
+        .replace(/"(obsidian-vault|self-space|artificial-intelligence)"/g, '"/obsidian/$1"')
         .replace(/'(obsidian-vault|self-space|artificial-intelligence)'/g, "'/obsidian/$1'")
         // Rewrite template literals
         .replace(/`\/(?!obsidian)/g, '`/obsidian/')
         .replace(/`(obsidian-vault|self-space|artificial-intelligence)\//g, '`/obsidian/$1/')
         .replace(/`(obsidian-vault|self-space|artificial-intelligence)`/g, '`/obsidian/$1`')
+        // Rewrite slug/path normalization functions (Quartz specific)
+        .replace(/simplifySlug\s*\(\s*"(obsidian-vault|self-space|artificial-intelligence)/g, 'simplifySlug("/obsidian/$1')
+        .replace(/simplifySlug\s*\(\s*'(obsidian-vault|self-space|artificial-intelligence)/g, "simplifySlug('/obsidian/$1")
+        .replace(/resolveRelative\s*\([^,]+,\s*"(obsidian-vault|self-space|artificial-intelligence)/g, 'resolveRelative($1,"/obsidian/$2')
         // Rewrite pathname checks
-        .replace(/\.pathname\s*===?\s*"\/"/g, '.pathname==="/obsidian" || .pathname==="/"')
-        .replace(/\.pathname\s*===?\s*'\/'/g, ".pathname==='/obsidian' || .pathname==='/'")
+        .replace(/\.pathname\s*===?\s*"\/"/g, '.pathname==="/obsidian"||.pathname==="/"')
+        .replace(/\.pathname\s*===?\s*'\/'/g, ".pathname==='/obsidian'||.pathname==='/'")
         // Rewrite location assignments
         .replace(/location\.pathname\s*=\s*"\/(?!obsidian)/g, 'location.pathname="/obsidian/')
         .replace(/location\.pathname\s*=\s*'\/(?!obsidian)/g, "location.pathname='/obsidian/")
         .replace(/location\.pathname\s*=\s*"(obsidian-vault|self-space|artificial-intelligence)/g, 'location.pathname="/obsidian/$1')
         .replace(/location\.pathname\s*=\s*'(obsidian-vault|self-space|artificial-intelligence)/g, "location.pathname='/obsidian/$1")
-        // Rewrite pushState/replaceState calls
+        // Rewrite history API calls
         .replace(/(pushState|replaceState)\(([^,]+),\s*([^,]+),\s*"\/(?!obsidian)/g, '$1($2,$3,"/obsidian/')
+        .replace(/(pushState|replaceState)\(([^,]+),\s*([^,]+),\s*'\/(?!obsidian)/g, "$1($2,$3,'/obsidian/")
         .replace(/(pushState|replaceState)\(([^,]+),\s*([^,]+),\s*"(obsidian-vault|self-space|artificial-intelligence)/g, '$1($2,$3,"/obsidian/$4')
-        // Rewrite resolveUrl function calls (Quartz specific)
-        .replace(/resolveUrl\("(obsidian-vault|self-space|artificial-intelligence)/g, 'resolveUrl("/obsidian/$1')
-        .replace(/resolveUrl\('(obsidian-vault|self-space|artificial-intelligence)/g, "resolveUrl('/obsidian/$1")
-        // Rewrite simplifySlug returns
-        .replace(/return\s+"(obsidian-vault|self-space|artificial-intelligence)/g, 'return "/obsidian/$1')
-        .replace(/return\s+'(obsidian-vault|self-space|artificial-intelligence)/g, "return '/obsidian/$1");
+        .replace(/(pushState|replaceState)\(([^,]+),\s*([^,]+),\s*'(obsidian-vault|self-space|artificial-intelligence)/g, "$1($2,$3,'/obsidian/$4")
+        // Rewrite router.push/navigate calls
+        .replace(/\.(push|navigate)\s*\(\s*"(obsidian-vault|self-space|artificial-intelligence)/g, '.$1("/obsidian/$2')
+        .replace(/\.(push|navigate)\s*\(\s*'(obsidian-vault|self-space|artificial-intelligence)/g, ".$1('/obsidian/$2");
 
       return new Response(rewrittenJs, {
         status: response.status,
