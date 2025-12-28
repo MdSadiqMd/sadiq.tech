@@ -9,11 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ObsidianRouteImport } from './routes/obsidian'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourcesIndexRouteImport } from './routes/resources/index'
+import { Route as ObsidianSplatRouteImport } from './routes/obsidian/$'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 
+const ObsidianRoute = ObsidianRouteImport.update({
+  id: '/obsidian',
+  path: '/obsidian',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
@@ -29,6 +36,11 @@ const ResourcesIndexRoute = ResourcesIndexRouteImport.update({
   path: '/resources/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ObsidianSplatRoute = ObsidianSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => ObsidianRoute,
+} as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
@@ -38,12 +50,16 @@ const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/mcp': typeof McpRoute
+  '/obsidian': typeof ObsidianRouteWithChildren
+  '/obsidian/$': typeof ObsidianSplatRoute
   '/resources': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/mcp': typeof McpRoute
+  '/obsidian': typeof ObsidianRouteWithChildren
+  '/obsidian/$': typeof ObsidianSplatRoute
   '/resources': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
@@ -51,26 +67,49 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/mcp': typeof McpRoute
+  '/obsidian': typeof ObsidianRouteWithChildren
+  '/obsidian/$': typeof ObsidianSplatRoute
   '/resources/': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/mcp' | '/resources' | '/api/trpc/$'
+  fullPaths:
+    | '/'
+    | '/mcp'
+    | '/obsidian'
+    | '/obsidian/$'
+    | '/resources'
+    | '/api/trpc/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/mcp' | '/resources' | '/api/trpc/$'
-  id: '__root__' | '/' | '/mcp' | '/resources/' | '/api/trpc/$'
+  to: '/' | '/mcp' | '/obsidian' | '/obsidian/$' | '/resources' | '/api/trpc/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/mcp'
+    | '/obsidian'
+    | '/obsidian/$'
+    | '/resources/'
+    | '/api/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   McpRoute: typeof McpRoute
+  ObsidianRoute: typeof ObsidianRouteWithChildren
   ResourcesIndexRoute: typeof ResourcesIndexRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/obsidian': {
+      id: '/obsidian'
+      path: '/obsidian'
+      fullPath: '/obsidian'
+      preLoaderRoute: typeof ObsidianRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mcp': {
       id: '/mcp'
       path: '/mcp'
@@ -92,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourcesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/obsidian/$': {
+      id: '/obsidian/$'
+      path: '/$'
+      fullPath: '/obsidian/$'
+      preLoaderRoute: typeof ObsidianSplatRouteImport
+      parentRoute: typeof ObsidianRoute
+    }
     '/api/trpc/$': {
       id: '/api/trpc/$'
       path: '/api/trpc/$'
@@ -102,9 +148,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ObsidianRouteChildren {
+  ObsidianSplatRoute: typeof ObsidianSplatRoute
+}
+
+const ObsidianRouteChildren: ObsidianRouteChildren = {
+  ObsidianSplatRoute: ObsidianSplatRoute,
+}
+
+const ObsidianRouteWithChildren = ObsidianRoute._addFileChildren(
+  ObsidianRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   McpRoute: McpRoute,
+  ObsidianRoute: ObsidianRouteWithChildren,
   ResourcesIndexRoute: ResourcesIndexRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
 }
