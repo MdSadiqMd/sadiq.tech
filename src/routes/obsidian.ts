@@ -4,8 +4,17 @@ const OBSIDIAN_PORTAL_URL = "https://obsidian-portal.pages.dev";
 
 async function handler({ request }: { request: Request }) {
   const url = new URL(request.url);
-  // Redirect to the actual Cloudflare Pages URL
-  return Response.redirect(`${OBSIDIAN_PORTAL_URL}${url.search}`, 302);
+  const targetUrl = `${OBSIDIAN_PORTAL_URL}/obsidian${url.search}`;
+
+  const response = await fetch(targetUrl);
+  const html = await response.text();
+
+  return new Response(html, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+    },
+  });
 }
 
 export const Route = createFileRoute("/obsidian")({
