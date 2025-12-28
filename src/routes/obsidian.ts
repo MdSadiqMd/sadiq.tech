@@ -11,8 +11,9 @@ async function handler({ request }: { request: Request }) {
 
   // Rewrite all absolute paths to include /obsidian prefix
   const rewrittenHtml = html
-    // Rewrite href attributes
+    // Rewrite href attributes - both / and vault paths
     .replace(/href="\/(?!obsidian)/g, 'href="/obsidian/')
+    .replace(/href="(obsidian-vault|self-space|artificial-intelligence)/g, 'href="/obsidian/$1')
     // Rewrite src attributes
     .replace(/src="\/(?!obsidian)/g, 'src="/obsidian/')
     // Rewrite CSS url() functions

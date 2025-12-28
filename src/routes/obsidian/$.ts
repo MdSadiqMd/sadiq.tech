@@ -6,7 +6,6 @@ async function handler({ request, params }: { request: Request; params: { _splat
   const url = new URL(request.url);
   const path = params._splat || "";
   
-  // Remove /obsidian prefix for the upstream request since Quartz is at root
   const targetUrl = `${OBSIDIAN_PORTAL_URL}/${path}${url.search}`;
 
   try {
@@ -17,8 +16,9 @@ async function handler({ request, params }: { request: Request; params: { _splat
     if (contentType.includes("text/html")) {
       const html = await response.text();
       const rewrittenHtml = html
-        // Rewrite href attributes
+        // Rewrite href attributes - both / and vault paths
         .replace(/href="\/(?!obsidian)/g, 'href="/obsidian/')
+        .replace(/href="(obsidian-vault|self-space|artificial-intelligence)/g, 'href="/obsidian/$1')
         // Rewrite src attributes  
         .replace(/src="\/(?!obsidian)/g, 'src="/obsidian/')
         // Rewrite CSS url() functions
@@ -35,24 +35,29 @@ async function handler({ request, params }: { request: Request; params: { _splat
       });
     }
 
-    // For JavaScript, rewrite navigation paths
+    // For JavaScript, rewrite navigation paths more aggressively
     if (contentType.includes("javascript") || contentType.includes("application/javascript")) {
       const js = await response.text();
       const rewrittenJs = js
-        // Rewrite string literals for paths
+        // Rewrite string literals for paths - both / and vault paths
         .replace(/"\/(?!obsidian)/g, '"/obsidian/')
         .replace(/'\/(?!obsidian)/g, "'/obsidian/")
+        // Rewrite vault names at start of strings
+        .replace(/"(obsidian-vault|self-space|artificial-intelligence)\//g, '"/obsidian/$1/')
+        .replace(/'(obsidian-vault|self-space|artificial-intelligence)\//g, "'/obsidian/$1/")
         // Rewrite template literals
         .replace(/`\/(?!obsidian)/g, '`/obsidian/')
+        .replace(/`(obsidian-vault|self-space|artificial-intelligence)\//g, '`/obsidian/$1/')
         // Rewrite pathname checks
         .replace(/\.pathname\s*===?\s*"\/"/g, '.pathname==="/obsidian" || .pathname==="/"')
         .replace(/\.pathname\s*===?\s*'\/'/g, ".pathname==='/obsidian' || .pathname==='/'")
         // Rewrite location assignments
         .replace(/location\.pathname\s*=\s*"\/(?!obsidian)/g, 'location.pathname="/obsidian/')
         .replace(/location\.pathname\s*=\s*'\/(?!obsidian)/g, "location.pathname='/obsidian/")
+        .replace(/location\.pathname\s*=\s*"(obsidian-vault|self-space|artificial-intelligence)/g, 'location.pathname="/obsidian/$1')
         // Rewrite pushState/replaceState calls
-        .replace(/pushState\([^,]+,\s*[^,]+,\s*"\/(?!obsidian)/g, 'pushState($1,$2,"/obsidian/')
-        .replace(/replaceState\([^,]+,\s*[^,]+,\s*"\/(?!obsidian)/g, 'replaceState($1,$2,"/obsidian/');
+        .replace(/(pushState|replaceState)\(([^,]+),\s*([^,]+),\s*"\/(?!obsidian)/g, '$1($2,$3,"/obsidian/')
+        .replace(/(pushState|replaceState)\(([^,]+),\s*([^,]+),\s*"(obsidian-vault|self-space|artificial-intelligence)/g, '$1($2,$3,"/obsidian/$4');
 
       return new Response(rewrittenJs, {
         status: response.status,
