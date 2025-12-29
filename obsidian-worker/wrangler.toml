@@ -1,0 +1,7 @@
+name = "obsidian-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+routes = [
+  { pattern = "sadiq.tech/obsidian*", zone_name = "sadiq.tech" }
+]
