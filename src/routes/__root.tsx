@@ -5,6 +5,8 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
+import { Toaster } from "sileo";
+import "sileo/styles.css";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 
@@ -53,6 +55,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <Toaster 
+          position="top-right" 
+          theme="dark"
+          options={{
+            fill: '#000000',
+            roundness: 8,
+            styles: {
+              title: '!text-white/90 !text-sm !font-normal',
+              description: '!text-white/60 !text-xs',
+            },
+          }}
+        />
         {children}
         <TanStackDevtools
           config={{

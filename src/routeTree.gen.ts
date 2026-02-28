@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourcesIndexRouteImport } from './routes/resources/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
@@ -17,6 +18,11 @@ import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -37,12 +43,14 @@ const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/gallery': typeof GalleryRoute
   '/mcp': typeof McpRoute
   '/resources': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/gallery': typeof GalleryRoute
   '/mcp': typeof McpRoute
   '/resources': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/gallery': typeof GalleryRoute
   '/mcp': typeof McpRoute
   '/resources/': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/mcp' | '/resources' | '/api/trpc/$'
+  fullPaths: '/' | '/gallery' | '/mcp' | '/resources' | '/api/trpc/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/mcp' | '/resources' | '/api/trpc/$'
-  id: '__root__' | '/' | '/mcp' | '/resources/' | '/api/trpc/$'
+  to: '/' | '/gallery' | '/mcp' | '/resources' | '/api/trpc/$'
+  id: '__root__' | '/' | '/gallery' | '/mcp' | '/resources/' | '/api/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GalleryRoute: typeof GalleryRoute
   McpRoute: typeof McpRoute
   ResourcesIndexRoute: typeof ResourcesIndexRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GalleryRoute: GalleryRoute,
   McpRoute: McpRoute,
   ResourcesIndexRoute: ResourcesIndexRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
