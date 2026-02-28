@@ -98,8 +98,146 @@ const tagsRouter = {
     }),
 } satisfies TRPCRouterRecord;
 
+const gistDBRouter = {
+  listImages: publicProcedure.query(async () => {
+    const gistDbId = process.env.GISTDB_ID;
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!gistDbId || !githubToken) {
+      throw new Error("GistDB not configured");
+    }
+
+    const response = await fetch(
+      `https://gist-db.mohammadsadiq4950.workers.dev/api/${gistDbId}?collection_name=gallery_images`,
+      {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch from GistDB");
+    }
+
+    const result = (await response.json()) as any;
+    const dataObj = result.data || {};
+    const images = Object.entries(dataObj).map(
+      ([uuid, data]: [string, any]) => ({
+        uuid,
+        data,
+      }),
+    );
+
+    return images;
+  }),
+
+  saveImage: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        fileName: z.string(),
+        gistId: z.string(),
+        uploadedAt: z.number(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+        aspectRatio: z.number().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const gistDbId = process.env.GISTDB_ID;
+      const githubToken = process.env.GITHUB_TOKEN;
+      if (!gistDbId || !githubToken) {
+        throw new Error("GistDB not configured");
+      }
+
+      const response = await fetch(
+        "https://gist-db.mohammadsadiq4950.workers.dev/api/objects",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            gist_id: gistDbId,
+            collection_name: "gallery_images",
+            data: input,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Failed to save to GistDB: ${error}`);
+      }
+
+      const result = (await response.json()) as any;
+      return { success: true, uuid: result.uuid };
+    }),
+
+  deleteImage: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const gistDbId = process.env.GISTDB_ID;
+      const githubToken = process.env.GITHUB_TOKEN;
+      if (!gistDbId || !githubToken) {
+        throw new Error("GistDB not configured");
+      }
+
+      const response = await fetch(
+        "https://gist-db.mohammadsadiq4950.workers.dev/api/objects",
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            gist_id: gistDbId,
+            collection_name: "gallery_images",
+            object_id: input.id,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Failed to delete from GistDB: ${error}`);
+      }
+
+      return { success: true };
+    }),
+
+  initCollection: publicProcedure.mutation(async () => {
+    const gistDbId = process.env.GISTDB_ID;
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!gistDbId || !githubToken) {
+      throw new Error("GistDB not configured");
+    }
+
+    try {
+      await fetch(
+        "https://gist-db.mohammadsadiq4950.workers.dev/api/collections",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            gist_id: gistDbId,
+            name: "gallery_images",
+          }),
+        },
+      );
+    } catch (error) {
+      // Collection might already exist
+    }
+
+    return { success: true };
+  }),
+} satisfies TRPCRouterRecord;
+
 export const trpcRouter = createTRPCRouter({
   resources: resourcesRouter,
   tags: tagsRouter,
+  gistDB: gistDBRouter,
 });
 export type TRPCRouter = typeof trpcRouter;
