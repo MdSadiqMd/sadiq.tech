@@ -178,6 +178,7 @@ function GalleryPage() {
         .map(
           (result) => (result as PromiseFulfilledResult<UploadedImage>).value,
         );
+      validImages.sort((a, b) => b.uploadedAt - a.uploadedAt);
 
       setImages(validImages);
       setIsLoadingImages(false);
