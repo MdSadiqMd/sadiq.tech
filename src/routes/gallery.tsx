@@ -7,6 +7,7 @@ import { X, Trash2, UploadCloud } from "lucide-react";
 import { sileo } from "sileo";
 import Upscaler from "upscaler";
 import { useTRPC } from "@/integrations/trpc/react";
+import { Loader } from "../components/ui/loader";
 
 export const Route = createFileRoute("/gallery")({
   component: GalleryPage,
@@ -557,13 +558,12 @@ function GalleryPage() {
         {isLoadingImages ? (
           <div className="flex items-center justify-center h-[calc(100vh-180px)]">
             <div className="flex flex-col items-center gap-4">
-              <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-              <p className="text-white/60 text-sm">Loading gallery...</p>
+              <Loader className="size-10" />
             </div>
           </div>
         ) : images.length === 0 ? (
           <div className="flex items-center justify-center h-[calc(100vh-180px)] text-white/40">
-            <p>No images yet. Upload your first image to get started.</p>
+            <p>No images yet</p>
           </div>
         ) : (
           <MasonryGrid
