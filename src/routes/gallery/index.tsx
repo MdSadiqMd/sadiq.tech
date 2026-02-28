@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { MasonryGrid } from "@/components/gallery/masonry-grid";
 import { PrimeButton } from "@/components/satisui/prime-button";
@@ -8,6 +8,7 @@ import { sileo } from "sileo";
 import Upscaler from "upscaler";
 import { useTRPC } from "@/integrations/trpc/react";
 import { Loader } from "@/components/ui/loader";
+import { githubAxios, githubRawAxios, workerAxios } from "@/lib/axios";
 
 export const Route = createFileRoute("/gallery/")({
   component: GalleryPage,
@@ -40,7 +41,6 @@ interface UploadedImage {
   gistDbUuid?: string;
 }
 
-const WORKER_URL = "https://pimg.mohammadsadiq4950.workers.dev/";
 const GITHUB_TOKEN =
   import.meta.env.VITE_GITHUB_TOKEN || import.meta.env.GITHUB_TOKEN || "";
 const GITHUB_USERNAME =
@@ -71,6 +71,14 @@ function GalleryPage() {
   const { data: listImagesData = [], refetch: refetchImages } = useQuery(
     trpc.gistDB.listImages.queryOptions(),
   );
+
+  const dataKey = useMemo(() => {
+    if (!listImagesData || !Array.isArray(listImagesData)) return "";
+    return listImagesData
+      .map((obj: any) => obj.uuid)
+      .sort()
+      .join(",");
+  }, [listImagesData]);
 
   const { mutateAsync: saveImageMutation } = useMutation({
     ...trpc.gistDB.saveImage.mutationOptions(),
@@ -129,11 +137,7 @@ function GalleryPage() {
 
   useEffect(() => {
     const loadImagesFromGistDB = async () => {
-      if (
-        !listImagesData ||
-        !Array.isArray(listImagesData) ||
-        listImagesData.length === 0
-      ) {
+      if (!dataKey) {
         setIsLoadingImages(false);
         setImages([]);
         return;
@@ -141,67 +145,46 @@ function GalleryPage() {
 
       setIsLoadingImages(true);
 
-      const loadedImages = await Promise.all(
-        listImagesData.map(async (obj: any, _: number) => {
+      const loadedImages = await Promise.allSettled(
+        listImagesData.map(async (obj: any) => {
           const img = obj.data;
+          const { data: gistData } = await githubAxios.get<any>(
+            `/gists/${img.gistId}`,
+          );
 
-          try {
-            const gistResponse = await fetch(
-              `https://api.github.com/gists/${img.gistId}`,
-              {
-                headers: {
-                  Authorization: `token ${GITHUB_TOKEN}`,
-                  Accept: "application/vnd.github.v3+json",
-                },
-              },
-            );
-
-            if (!gistResponse.ok) {
-              console.error(
-                "Failed to fetch gist:",
-                img.gistId,
-                gistResponse.status,
-              );
-              return null;
-            }
-
-            const gistData = (await gistResponse.json()) as any;
-            const fileData = gistData.files[img.fileName];
-
-            if (!fileData?.raw_url) {
-              console.error("No raw_url for:", img.fileName);
-              return null;
-            }
-
-            const rawResponse = await fetch(fileData.raw_url);
-            const imageData = (await rawResponse.json()) as any;
-
-            const byteCharacters = atob(imageData.data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: imageData.mimeType });
-            const blobUrl = URL.createObjectURL(blob);
-
-            return { ...img, url: blobUrl, gistDbUuid: obj.uuid };
-          } catch (error) {
-            console.error("Failed to load image:", img.fileName, error);
-            return null;
+          const fileData = gistData.files[img.fileName];
+          if (!fileData?.raw_url) {
+            throw new Error(`No raw_url for: ${img.fileName}`);
           }
+
+          const { data: imageData } = await githubRawAxios.get<any>(
+            fileData.raw_url,
+          );
+          const byteCharacters = atob(imageData.data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: imageData.mimeType });
+          const blobUrl = URL.createObjectURL(blob);
+
+          return { ...img, url: blobUrl, gistDbUuid: obj.uuid };
         }),
       );
 
-      const validImages = loadedImages.filter(Boolean) as UploadedImage[];
+      const validImages = loadedImages
+        .filter((result) => result.status === "fulfilled")
+        .map(
+          (result) => (result as PromiseFulfilledResult<UploadedImage>).value,
+        );
+
       setImages(validImages);
       setIsLoadingImages(false);
     };
 
-    if (listImagesData !== undefined) {
-      loadImagesFromGistDB();
-    }
-  }, [listImagesData]);
+    loadImagesFromGistDB();
+  }, [dataKey]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -367,41 +350,26 @@ function GalleryPage() {
         formData.append("githubAccessToken", GITHUB_TOKEN);
         formData.append("githubUsername", GITHUB_USERNAME);
 
-        const response = await fetch(WORKER_URL, {
-          method: "POST",
-          body: formData,
+        const { data } = await workerAxios.post<any>("/", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Upload failed: ${errorText}`);
-        }
-
-        const data: any = await response.json();
         if (!data.success || !data.gistId) {
           throw new Error("Invalid response from server");
         }
 
-        const gistResponse = await fetch(
-          `https://api.github.com/gists/${data.gistId}`,
-          {
-            headers: {
-              Authorization: `token ${GITHUB_TOKEN}`,
-              Accept: "application/vnd.github.v3+json",
-            },
-          },
+        const { data: gistData } = await githubAxios.get<any>(
+          `/gists/${data.gistId}`,
         );
-        if (!gistResponse.ok) {
-          throw new Error("Failed to fetch gist details");
-        }
-
-        const gistData = (await gistResponse.json()) as any;
         const fileData = gistData.files[data.fileName];
         if (!fileData || !fileData.raw_url) {
           throw new Error("Could not get image URL from gist");
         }
 
-        const rawResponse = await fetch(fileData.raw_url);
-        const imageData = (await rawResponse.json()) as any;
+        const { data: imageData } = await githubRawAxios.get<any>(
+          fileData.raw_url,
+        );
 
         const base64Data = imageData.data;
         const mimeType = imageData.mimeType || processedFile.type;
