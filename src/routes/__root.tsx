@@ -56,7 +56,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <Toaster 
-          position="top-right" 
+          position="top-center" 
           theme="dark"
           options={{
             fill: '#000000',

@@ -3,7 +3,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { MasonryGrid } from "@/components/gallery/masonry-grid";
 import { PrimeButton } from "@/components/satisui/prime-button";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Trash2, CloudUpload } from "lucide-react";
 import { sileo } from "sileo";
 import Upscaler from "upscaler";
 import { useTRPC } from "@/integrations/trpc/react";
@@ -426,7 +426,7 @@ function GalleryPage() {
 
         setUploadState("success");
         sileo.success({
-          title: enableUpscale ? "Uploaded & Upscaled" : "Uploaded",
+          title: "Uploaded",
         });
       } catch (error) {
         console.error("Upload error:", error);
@@ -480,13 +480,13 @@ function GalleryPage() {
       if (imageToDelete?.gistDbUuid) {
         try {
           await deleteImageMutation({ id: imageToDelete.gistDbUuid });
-          sileo.success({ title: "Deleted" });
+          sileo.success({ title: "Image deleted" });
         } catch (error) {
           console.error("Failed to delete from GistDB:", error);
           sileo.error({ title: "Failed to delete from storage" });
         }
       } else {
-        sileo.success({ title: "Deleted" });
+        sileo.success({ title: "Image deleted" });
       }
     },
     [images, deleteImageMutation],
@@ -507,11 +507,10 @@ function GalleryPage() {
         </div>
       )}
 
-      <div className="container mx-auto px-6 py-6 max-w-7xl">
-        <div className="flex items-center justify-between mb-12">
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-xs text-white/60">Upscale</span>
+      <div className="container mx-auto px-6 py-8 max-w-7xl">
+        <div className="flex items-center justify-end gap-4 mb-4">
+          <div className="relative group">
+            <label className="flex items-center gap-2.5 cursor-pointer">
               <div className="relative">
                 <input
                   type="checkbox"
@@ -519,25 +518,29 @@ function GalleryPage() {
                   onChange={(e) => setEnableUpscale(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-9 h-5 bg-white/10 rounded-full peer-checked:bg-white/20 transition-colors border border-white/20 peer-checked:border-white/40"></div>
-                <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white/60 rounded-full transition-transform peer-checked:translate-x-4 peer-checked:bg-white"></div>
+                <div className="w-11 h-6 bg-white/10 rounded-full peer-checked:bg-white/20 transition-all border border-white/20 peer-checked:border-white/30"></div>
+                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white/60 rounded-full transition-all peer-checked:translate-x-5 peer-checked:bg-white shadow-sm"></div>
               </div>
             </label>
-
-            <PrimeButton
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              actionState={uploadState}
-              loadingText="Uploading"
-              successText="Uploaded"
-              errorText="Failed"
-              variant="outline"
-              className="border-white/20 hover:border-white/40 bg-transparent text-white"
-            >
-              <Upload className="h-3 w-3 mr-2" />
-              Upload
-            </PrimeButton>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-400 text-black text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg">
+              {enableUpscale ? "2x upscaling enabled" : "Upscaling disabled"}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-white"></div>
+            </div>
           </div>
+
+          <PrimeButton
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            actionState={uploadState}
+            loadingText="Uploading"
+            successText="Uploaded"
+            errorText="Failed"
+            variant="outline"
+            className="border-white/20 hover:border-white/40 bg-transparent text-white"
+          >
+            <CloudUpload className="mr-2 h-4 w-4" />
+            Upload
+          </PrimeButton>
 
           <input
             ref={fileInputRef}
@@ -595,10 +598,10 @@ function GalleryPage() {
                       e.stopPropagation();
                       handleDelete(item.id);
                     }}
-                    className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 rounded backdrop-blur-sm transition-colors z-10"
-                    title="Delete"
+                    className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-600/80 rounded backdrop-blur-sm transition-colors z-10"
+                    title="Delete image"
                   >
-                    <X className="h-3 w-3 text-white" />
+                    <Trash2 className="h-3.5 w-3.5 text-white" />
                   </button>
                 )}
               </div>
