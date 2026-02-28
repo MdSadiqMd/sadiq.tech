@@ -54,6 +54,7 @@ function GalleryPage() {
   const [hoveredImageId, setHoveredImageId] = useState<string | null>(null);
   const [enableUpscale, setEnableUpscale] = useState(true);
   const [isLoadingImages, setIsLoadingImages] = useState(true);
+  const [columns, setColumns] = useState(4);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upscalerRef = useRef<any>(null);
 
@@ -79,6 +80,25 @@ function GalleryPage() {
       refetchImages();
     },
   });
+
+  useEffect(() => {
+    const updateColumns = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        setColumns(2); // Mobile
+      } else if (width < 1024) {
+        setColumns(3); // Tablet
+      } else if (width < 1536) {
+        setColumns(4); // Desktop
+      } else {
+        setColumns(4); // Large screens
+      }
+    };
+
+    updateColumns();
+    window.addEventListener("resize", updateColumns);
+    return () => window.removeEventListener("resize", updateColumns);
+  }, []);
 
   useEffect(() => {
     const initUpscaler = async () => {
@@ -542,7 +562,7 @@ function GalleryPage() {
         ) : (
           <MasonryGrid
             images={images}
-            columns={4}
+            columns={columns}
             gap={12}
             onImageClick={(image) => setSelectedImage(image)}
             onImageHover={(id) => setHoveredImageId(id)}
