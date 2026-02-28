@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "./init";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { getGistContent, updateGist } from "@/utils/octokit";
+import { gistDBAxios } from "@/lib/axios";
 
 const resourcesRouter = {
   list: publicProcedure.query(async () => {
@@ -123,20 +124,9 @@ const gistDBRouter = {
     }
 
     try {
-      const response = await fetch(
-        `https://gist-db.mohammadsadiq4950.workers.dev/api/${gistDbId}?collection_name=gallery_images`,
-        {
-          headers: {
-            Authorization: `Bearer ${githubToken}`,
-          },
-        },
+      const { data: result } = await gistDBAxios.get<any>(
+        `/${gistDbId}?collection_name=gallery_images`,
       );
-      if (!response.ok) {
-        console.error("GistDB fetch failed:", response.status);
-        return [];
-      }
-
-      const result = (await response.json()) as any;
       const dataObj = result.data || {};
       const images = Object.entries(dataObj).map(
         ([uuid, data]: [string, any]) => ({
@@ -171,27 +161,11 @@ const gistDBRouter = {
         throw new Error("GistDB not configured");
       }
 
-      const response = await fetch(
-        "https://gist-db.mohammadsadiq4950.workers.dev/api/objects",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${githubToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            gist_id: gistDbId,
-            collection_name: "gallery_images",
-            data: input,
-          }),
-        },
-      );
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to save to GistDB: ${error}`);
-      }
-
-      const result = (await response.json()) as any;
+      const { data: result } = await gistDBAxios.post<any>("/objects", {
+        gist_id: gistDbId,
+        collection_name: "gallery_images",
+        data: input,
+      });
       return { success: true, uuid: result.uuid };
     }),
 
@@ -204,25 +178,13 @@ const gistDBRouter = {
         throw new Error("GistDB not configured");
       }
 
-      const response = await fetch(
-        "https://gist-db.mohammadsadiq4950.workers.dev/api/objects",
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${githubToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            gist_id: gistDbId,
-            collection_name: "gallery_images",
-            object_id: input.id,
-          }),
+      await gistDBAxios.delete("/objects", {
+        data: {
+          gist_id: gistDbId,
+          collection_name: "gallery_images",
+          object_id: input.id,
         },
-      );
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to delete from GistDB: ${error}`);
-      }
+      });
 
       return { success: true };
     }),
@@ -235,20 +197,10 @@ const gistDBRouter = {
     }
 
     try {
-      await fetch(
-        "https://gist-db.mohammadsadiq4950.workers.dev/api/collections",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${githubToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            gist_id: gistDbId,
-            name: "gallery_images",
-          }),
-        },
-      );
+      await gistDBAxios.post("/collections", {
+        gist_id: gistDbId,
+        name: "gallery_images",
+      });
     } catch (error) {
       // Collection might already exist
     }

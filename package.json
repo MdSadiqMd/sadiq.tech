@@ -36,6 +36,7 @@
     "@trpc/server": "^11.4.3",
     "@trpc/tanstack-react-query": "^11.4.3",
     "@upscalerjs/esrgan-thick": "^1.0.0-beta.16",
+    "axios": "^1.7.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.575.0",
