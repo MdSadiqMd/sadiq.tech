@@ -511,8 +511,8 @@ function GalleryPage() {
         </div>
       )}
 
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
-        <div className="flex items-center justify-end gap-4 mb-4">
+      <div className="container mx-auto px-px pt-12 pb-0 max-w-7xl">
+        <div className="flex items-center justify-end gap-4 mb-2 px-6">
           <div className="relative group">
             <label className="flex items-center gap-2.5 cursor-pointer">
               <div className="relative">

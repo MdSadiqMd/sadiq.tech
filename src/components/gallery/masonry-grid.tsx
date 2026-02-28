@@ -85,7 +85,7 @@ export function MasonryGrid({
   }
 
   return (
-    <div ref={parentRef} className="h-[calc(100vh-180px)] overflow-auto">
+    <div ref={parentRef} className="overflow-auto h-[calc(100vh-90px)]">
       <div
         style={{
           height: `${layout.totalHeight}px`,
