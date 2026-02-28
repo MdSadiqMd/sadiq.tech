@@ -7,9 +7,9 @@ import { X, Trash2, UploadCloud } from "lucide-react";
 import { sileo } from "sileo";
 import Upscaler from "upscaler";
 import { useTRPC } from "@/integrations/trpc/react";
-import { Loader } from "../components/ui/loader";
+import { Loader } from "@/components/ui/loader";
 
-export const Route = createFileRoute("/gallery")({
+export const Route = createFileRoute("/gallery/")({
   component: GalleryPage,
   loader: async () => {
     // Pre-load to ensure data is available

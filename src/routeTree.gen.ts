@@ -10,19 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as McpRouteImport } from './routes/mcp'
-import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResourcesIndexRouteImport } from './routes/resources/index'
+import { Route as GalleryIndexRouteImport } from './routes/gallery/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GalleryRoute = GalleryRouteImport.update({
-  id: '/gallery',
-  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +30,11 @@ const ResourcesIndexRoute = ResourcesIndexRouteImport.update({
   path: '/resources/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GalleryIndexRoute = GalleryIndexRouteImport.update({
+  id: '/gallery/',
+  path: '/gallery/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
@@ -43,38 +43,38 @@ const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/gallery': typeof GalleryRoute
   '/mcp': typeof McpRoute
+  '/gallery': typeof GalleryIndexRoute
   '/resources': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/gallery': typeof GalleryRoute
   '/mcp': typeof McpRoute
+  '/gallery': typeof GalleryIndexRoute
   '/resources': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/gallery': typeof GalleryRoute
   '/mcp': typeof McpRoute
+  '/gallery/': typeof GalleryIndexRoute
   '/resources/': typeof ResourcesIndexRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/gallery' | '/mcp' | '/resources' | '/api/trpc/$'
+  fullPaths: '/' | '/mcp' | '/gallery' | '/resources' | '/api/trpc/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/gallery' | '/mcp' | '/resources' | '/api/trpc/$'
-  id: '__root__' | '/' | '/gallery' | '/mcp' | '/resources/' | '/api/trpc/$'
+  to: '/' | '/mcp' | '/gallery' | '/resources' | '/api/trpc/$'
+  id: '__root__' | '/' | '/mcp' | '/gallery/' | '/resources/' | '/api/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  GalleryRoute: typeof GalleryRoute
   McpRoute: typeof McpRoute
+  GalleryIndexRoute: typeof GalleryIndexRoute
   ResourcesIndexRoute: typeof ResourcesIndexRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
@@ -86,13 +86,6 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gallery': {
-      id: '/gallery'
-      path: '/gallery'
-      fullPath: '/gallery'
-      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -109,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourcesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gallery/': {
+      id: '/gallery/'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/trpc/$': {
       id: '/api/trpc/$'
       path: '/api/trpc/$'
@@ -121,8 +121,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  GalleryRoute: GalleryRoute,
   McpRoute: McpRoute,
+  GalleryIndexRoute: GalleryIndexRoute,
   ResourcesIndexRoute: ResourcesIndexRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
 }
