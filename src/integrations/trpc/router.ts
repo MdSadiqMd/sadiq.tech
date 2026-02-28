@@ -5,11 +5,19 @@ import { getGistContent, updateGist } from "@/utils/octokit";
 
 const resourcesRouter = {
   list: publicProcedure.query(async () => {
-    const gistId = process.env.RESOURCES_GIST_ID;
-    if (!gistId) throw new Error("RESOURCES_GIST_ID not configured");
+    try {
+      const gistId = process.env.RESOURCES_GIST_ID;
+      if (!gistId) {
+        console.error("RESOURCES_GIST_ID not configured");
+        return [];
+      }
 
-    const gistContent = await getGistContent(gistId);
-    return gistContent?.data || [];
+      const gistContent = await getGistContent(gistId);
+      return Array.isArray(gistContent?.data) ? gistContent.data : [];
+    } catch (error) {
+      console.error("Failed to fetch resources:", error);
+      return [];
+    }
   }),
 
   add: publicProcedure
@@ -68,11 +76,19 @@ const resourcesRouter = {
 
 const tagsRouter = {
   list: publicProcedure.query(async () => {
-    const gistId = process.env.TAGS_GIST_ID;
-    if (!gistId) throw new Error("TAGS_GIST_ID not configured");
+    try {
+      const gistId = process.env.TAGS_GIST_ID;
+      if (!gistId) {
+        console.error("TAGS_GIST_ID not configured");
+        return [];
+      }
 
-    const gistContent = await getGistContent(gistId);
-    return gistContent?.data || [];
+      const gistContent = await getGistContent(gistId);
+      return Array.isArray(gistContent?.data) ? gistContent.data : [];
+    } catch (error) {
+      console.error("Failed to fetch tags:", error);
+      return [];
+    }
   }),
 
   add: publicProcedure
@@ -106,28 +122,34 @@ const gistDBRouter = {
       throw new Error("GistDB not configured");
     }
 
-    const response = await fetch(
-      `https://gist-db.mohammadsadiq4950.workers.dev/api/${gistDbId}?collection_name=gallery_images`,
-      {
-        headers: {
-          Authorization: `Bearer ${githubToken}`,
+    try {
+      const response = await fetch(
+        `https://gist-db.mohammadsadiq4950.workers.dev/api/${gistDbId}?collection_name=gallery_images`,
+        {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+          },
         },
-      },
-    );
-    if (!response.ok) {
-      throw new Error("Failed to fetch from GistDB");
+      );
+      if (!response.ok) {
+        console.error("GistDB fetch failed:", response.status);
+        return [];
+      }
+
+      const result = (await response.json()) as any;
+      const dataObj = result.data || {};
+      const images = Object.entries(dataObj).map(
+        ([uuid, data]: [string, any]) => ({
+          uuid,
+          data,
+        }),
+      );
+
+      return images;
+    } catch (error) {
+      console.error("Failed to fetch from GistDB:", error);
+      return [];
     }
-
-    const result = (await response.json()) as any;
-    const dataObj = result.data || {};
-    const images = Object.entries(dataObj).map(
-      ([uuid, data]: [string, any]) => ({
-        uuid,
-        data,
-      }),
-    );
-
-    return images;
   }),
 
   saveImage: publicProcedure

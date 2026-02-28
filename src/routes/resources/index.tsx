@@ -114,15 +114,15 @@ export const Route = createFileRoute("/resources/")({
 function ResourcesPage() {
   const trpc = useTRPC();
 
-  const { data: resourcesData, refetch: refetchResources } = useQuery(
+  const { data: resourcesData = [], refetch: refetchResources } = useQuery(
     trpc.resources.list.queryOptions(),
   );
-  const { data: tagsData, refetch: refetchTags } = useQuery(
+  const { data: tagsData = [], refetch: refetchTags } = useQuery(
     trpc.tags.list.queryOptions(),
   );
 
-  const resources = (resourcesData as Resource[] | undefined) ?? [];
-  const tags = (tagsData as Tag[] | undefined) ?? [];
+  const resources = Array.isArray(resourcesData) ? resourcesData as Resource[] : [];
+  const tags = Array.isArray(tagsData) ? tagsData as Tag[] : [];
 
   const { mutateAsync: addResource } = useMutation({
     ...trpc.resources.add.mutationOptions(),

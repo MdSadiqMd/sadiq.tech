@@ -3,13 +3,17 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { MasonryGrid } from "@/components/gallery/masonry-grid";
 import { PrimeButton } from "@/components/satisui/prime-button";
-import { Upload, X, Trash2, CloudUpload } from "lucide-react";
+import { X, Trash2, UploadCloud } from "lucide-react";
 import { sileo } from "sileo";
 import Upscaler from "upscaler";
 import { useTRPC } from "@/integrations/trpc/react";
 
 export const Route = createFileRoute("/gallery")({
   component: GalleryPage,
+  loader: async () => {
+    // Pre-load to ensure data is available
+    return { images: [] };
+  },
   head: () => ({
     meta: [
       {
@@ -63,7 +67,7 @@ function GalleryPage() {
     ...trpc.gistDB.initCollection.mutationOptions(),
   });
 
-  const { data: listImagesData, refetch: refetchImages } = useQuery(
+  const { data: listImagesData = [], refetch: refetchImages } = useQuery(
     trpc.gistDB.listImages.queryOptions(),
   );
 
@@ -124,21 +128,20 @@ function GalleryPage() {
 
   useEffect(() => {
     const loadImagesFromGistDB = async () => {
-      if (!listImagesData) {
+      if (
+        !listImagesData ||
+        !Array.isArray(listImagesData) ||
+        listImagesData.length === 0
+      ) {
         setIsLoadingImages(false);
+        setImages([]);
         return;
       }
 
       setIsLoadingImages(true);
-      const storedImages = (listImagesData as unknown as any[]) || [];
-
-      if (storedImages.length === 0) {
-        setIsLoadingImages(false);
-        return;
-      }
 
       const loadedImages = await Promise.all(
-        storedImages.map(async (obj: any, _: number) => {
+        listImagesData.map(async (obj: any, _: number) => {
           const img = obj.data;
 
           try {
@@ -502,7 +505,7 @@ function GalleryPage() {
       {isDragging && (
         <div className="fixed inset-0 bg-white/5 backdrop-blur-sm z-40 flex items-center justify-center pointer-events-none">
           <div className="border border-white/20 rounded-lg p-8">
-            <Upload className="h-12 w-12 mx-auto text-white/60" />
+            <UploadCloud className="h-12 w-12 mx-auto text-white/60" />
           </div>
         </div>
       )}
@@ -538,7 +541,7 @@ function GalleryPage() {
             variant="outline"
             className="border-white/20 hover:border-white/40 bg-transparent text-white"
           >
-            <CloudUpload className="mr-2 h-4 w-4" />
+            <UploadCloud className="mr-2 h-4 w-4" />
             Upload
           </PrimeButton>
 
@@ -590,7 +593,16 @@ function GalleryPage() {
                       'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23000" width="100" height="100"/%3E%3C/svg%3E';
                   }}
                 />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                <div
+                  className="absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none backdrop-blur-[2px]"
+                  style={{
+                    maskImage:
+                      "linear-gradient(to top, black 0%, transparent 100%)",
+                    WebkitMaskImage:
+                      "linear-gradient(to top, black 0%, transparent 100%)",
+                  }}
+                />
 
                 {hoveredImageId === item.id && (
                   <button

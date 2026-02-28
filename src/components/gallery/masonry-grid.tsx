@@ -19,7 +19,7 @@ interface MasonryGridProps {
 }
 
 export function MasonryGrid({
-  images,
+  images = [],
   columns = 3,
   gap = 12,
   onImageClick,
@@ -30,6 +30,7 @@ export function MasonryGrid({
 }: MasonryGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const safeImages = Array.isArray(images) ? images : [];
 
   useEffect(() => {
     if (!parentRef.current) return;
@@ -50,7 +51,7 @@ export function MasonryGrid({
   }, [containerWidth, columns, gap]);
 
   const layout = useMemo(() => {
-    if (images.length === 0) {
+    if (!safeImages || safeImages.length === 0) {
       return { positions: [], totalHeight: 0 };
     }
 
@@ -58,7 +59,7 @@ export function MasonryGrid({
     const positions: Array<{ column: number; top: number; height: number }> =
       [];
 
-    images.forEach((image) => {
+    safeImages.forEach((image) => {
       const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
       const imageHeight = image.aspectRatio
         ? columnWidth / image.aspectRatio
@@ -77,9 +78,9 @@ export function MasonryGrid({
       positions,
       totalHeight: Math.max(...columnHeights, 0),
     };
-  }, [images, columns, gap, columnWidth]);
+  }, [safeImages, columns, gap, columnWidth]);
 
-  if (images.length === 0) {
+  if (!safeImages || safeImages.length === 0) {
     return null;
   }
 
@@ -92,7 +93,7 @@ export function MasonryGrid({
           position: "relative",
         }}
       >
-        {images.map((image, index) => {
+        {safeImages.map((image, index) => {
           const position = layout.positions[index];
           if (!image || !position) return null;
 
