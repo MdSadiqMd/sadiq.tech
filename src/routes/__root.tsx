@@ -55,15 +55,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Toaster 
-          position="top-center" 
+        <Toaster
+          position="top-center"
           theme="dark"
           options={{
-            fill: '#000000',
+            fill: "#000000",
             roundness: 8,
             styles: {
-              title: '!text-white/90 !text-sm !font-normal',
-              description: '!text-white/60 !text-xs',
+              title: "!text-white/90 !text-sm !font-normal",
+              description: "!text-white/60 !text-xs",
             },
           }}
         />

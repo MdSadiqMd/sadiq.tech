@@ -121,8 +121,10 @@ function ResourcesPage() {
     trpc.tags.list.queryOptions(),
   );
 
-  const resources = Array.isArray(resourcesData) ? resourcesData as Resource[] : [];
-  const tags = Array.isArray(tagsData) ? tagsData as Tag[] : [];
+  const resources = Array.isArray(resourcesData)
+    ? (resourcesData as Resource[])
+    : [];
+  const tags = Array.isArray(tagsData) ? (tagsData as Tag[]) : [];
 
   const { mutateAsync: addResource } = useMutation({
     ...trpc.resources.add.mutationOptions(),

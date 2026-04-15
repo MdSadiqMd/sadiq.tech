@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "./init";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { getGistContent, updateGist } from "@/utils/octokit";
-import { gistDBAxios } from "@/lib/axios";
+import { gistDBAxios, workerAxios } from "@/lib/axios";
 
 const resourcesRouter = {
   list: publicProcedure.query(async () => {
@@ -128,14 +128,18 @@ const gistDBRouter = {
       const { data: result } = await gistDBAxios.get<any>(
         `/${gistDbId}?collection_name=gallery_images`,
       );
-      
+
       console.log("[tRPC] Raw GistDB response keys:", Object.keys(result));
-      console.log("[tRPC] result.data type:", typeof result.data, Array.isArray(result.data) ? "array" : "object");
-      
+      console.log(
+        "[tRPC] result.data type:",
+        typeof result.data,
+        Array.isArray(result.data) ? "array" : "object",
+      );
+
       const dataObj = result.data || {};
       const dataKeys = Object.keys(dataObj);
       console.log(`[tRPC] GistDB data object has ${dataKeys.length} keys`);
-      
+
       const images = Object.entries(dataObj).map(
         ([uuid, data]: [string, any]) => ({
           uuid,
@@ -150,6 +154,92 @@ const gistDBRouter = {
       return [];
     }
   }),
+
+  uploadImage: publicProcedure
+    .input(
+      z.object({
+        imageBase64: z.string(),
+        fileName: z.string(),
+        mimeType: z.string(),
+        githubAccessToken: z.string(),
+        githubUsername: z.string(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const buffer = Buffer.from(input.imageBase64, "base64");
+
+        console.log("[Upload] Image size:", buffer.length, "bytes");
+        console.log("[Upload] File name:", input.fileName);
+        console.log("[Upload] MIME type:", input.mimeType);
+
+        // Manually construct multipart/form-data
+        const boundary = `----WebKitFormBoundary${Math.random().toString(36).substring(2)}`;
+        const CRLF = "\r\n";
+
+        const parts: Buffer[] = [];
+
+        // Add image field
+        parts.push(
+          Buffer.from(
+            `--${boundary}${CRLF}` +
+              `Content-Disposition: form-data; name="image"; filename="${input.fileName}"${CRLF}` +
+              `Content-Type: ${input.mimeType}${CRLF}${CRLF}`,
+          ),
+        );
+        parts.push(buffer);
+        parts.push(Buffer.from(CRLF));
+
+        // Add githubAccessToken field
+        parts.push(
+          Buffer.from(
+            `--${boundary}${CRLF}` +
+              `Content-Disposition: form-data; name="githubAccessToken"${CRLF}${CRLF}` +
+              `${input.githubAccessToken}${CRLF}`,
+          ),
+        );
+
+        // Add githubUsername field
+        parts.push(
+          Buffer.from(
+            `--${boundary}${CRLF}` +
+              `Content-Disposition: form-data; name="githubUsername"${CRLF}${CRLF}` +
+              `${input.githubUsername}${CRLF}`,
+          ),
+        );
+
+        // Add closing boundary
+        parts.push(Buffer.from(`--${boundary}--${CRLF}`));
+
+        // Concatenate all parts
+        const body = Buffer.concat(parts);
+        console.log("[Upload] Body size:", body.length, "bytes");
+        console.log("[Upload] Boundary:", boundary);
+        console.log("[Upload] Sending request to Pimg worker with axios...");
+
+        const { data } = await workerAxios.post<any>("/", body, {
+          headers: {
+            "Content-Type": `multipart/form-data; boundary=${boundary}`,
+            "Content-Length": body.length.toString(),
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        });
+
+        console.log("[Upload] Success! Response:", data);
+
+        if (!data.success || !data.gistId) {
+          throw new Error("Invalid response from Pimg worker");
+        }
+        return data;
+      } catch (error) {
+        console.error("Upload proxy error:", error);
+        if (error instanceof Error) {
+          console.error("Error message:", error.message);
+        }
+        throw error;
+      }
+    }),
 
   saveImage: publicProcedure
     .input(

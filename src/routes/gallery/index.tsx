@@ -8,7 +8,7 @@ import { sileo } from "sileo";
 import Upscaler from "upscaler";
 import { useTRPC } from "@/integrations/trpc/react";
 import { Loader } from "@/components/ui/loader";
-import { githubAxios, githubRawAxios, workerAxios } from "@/lib/axios";
+import { githubAxios, githubRawAxios } from "@/lib/axios";
 
 export const Route = createFileRoute("/gallery/")({
   component: GalleryPage,
@@ -152,26 +152,32 @@ function GalleryPage() {
       }
 
       setIsLoadingImages(true);
-      console.log(`[Gallery] Starting to load ${listImagesData.length} images from GistDB`);
+      console.log(
+        `[Gallery] Starting to load ${listImagesData.length} images from GistDB`,
+      );
 
       // Process images in batches to avoid overwhelming the API
       const BATCH_SIZE = 10;
       const allLoadedImages: UploadedImage[] = [];
-      
+
       for (let i = 0; i < listImagesData.length; i += BATCH_SIZE) {
         const batch = listImagesData.slice(i, i + BATCH_SIZE);
-        console.log(`[Gallery] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(listImagesData.length / BATCH_SIZE)} (${batch.length} images)`);
-        
+        console.log(
+          `[Gallery] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(listImagesData.length / BATCH_SIZE)} (${batch.length} images)`,
+        );
+
         const batchResults = await Promise.allSettled(
           batch.map(async (obj: any, batchIndex: number) => {
             const globalIndex = i + batchIndex;
             try {
               const img = obj.data;
-              console.log(`[Gallery] Loading image ${globalIndex + 1}/${listImagesData.length}: ${img.fileName}`);
-              
+              console.log(
+                `[Gallery] Loading image ${globalIndex + 1}/${listImagesData.length}: ${img.fileName}`,
+              );
+
               const { data: gistData } = await githubAxios.get<any>(
                 `/gists/${img.gistId}`,
-                { timeout: 10000 } // 10 second timeout per request
+                { timeout: 10000 }, // 10 second timeout per request
               );
 
               const fileData = gistData.files[img.fileName];
@@ -181,9 +187,9 @@ function GalleryPage() {
 
               const { data: imageData } = await githubRawAxios.get<any>(
                 fileData.raw_url,
-                { timeout: 10000 }
+                { timeout: 10000 },
               );
-              
+
               const byteCharacters = atob(imageData.data);
               const byteNumbers = new Array(byteCharacters.length);
               for (let j = 0; j < byteCharacters.length; j++) {
@@ -193,10 +199,15 @@ function GalleryPage() {
               const blob = new Blob([byteArray], { type: imageData.mimeType });
               const blobUrl = URL.createObjectURL(blob);
 
-              console.log(`[Gallery] ✓ Successfully loaded image ${globalIndex + 1}: ${img.fileName}`);
+              console.log(
+                `[Gallery] ✓ Successfully loaded image ${globalIndex + 1}: ${img.fileName}`,
+              );
               return { ...img, url: blobUrl, gistDbUuid: obj.uuid };
             } catch (error) {
-              console.error(`[Gallery] ✗ Failed to load image ${globalIndex + 1}:`, error);
+              console.error(
+                `[Gallery] ✗ Failed to load image ${globalIndex + 1}:`,
+                error,
+              );
               throw error;
             }
           }),
@@ -207,21 +218,25 @@ function GalleryPage() {
           .map(
             (result) => (result as PromiseFulfilledResult<UploadedImage>).value,
           );
-        
+
         allLoadedImages.push(...validBatchImages);
-        console.log(`[Gallery] Batch complete: ${validBatchImages.length}/${batch.length} succeeded. Total so far: ${allLoadedImages.length}`);
-        
+        console.log(
+          `[Gallery] Batch complete: ${validBatchImages.length}/${batch.length} succeeded. Total so far: ${allLoadedImages.length}`,
+        );
+
         // Small delay between batches to avoid rate limiting
         if (i + BATCH_SIZE < listImagesData.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
-      
+
       const failedCount = listImagesData.length - allLoadedImages.length;
-      console.log(`[Gallery] Total images from GistDB: ${listImagesData.length}`);
+      console.log(
+        `[Gallery] Total images from GistDB: ${listImagesData.length}`,
+      );
       console.log(`[Gallery] Successfully loaded: ${allLoadedImages.length}`);
       console.log(`[Gallery] Failed: ${failedCount}`);
-      
+
       allLoadedImages.sort((a, b) => b.uploadedAt - a.uploadedAt);
 
       setImages(allLoadedImages);
@@ -279,6 +294,10 @@ function GalleryPage() {
     },
     [saveImageMutation],
   );
+
+  const { mutateAsync: uploadImageMutation } = useMutation({
+    ...trpc.gistDB.uploadImage.mutationOptions(),
+  });
 
   const handleUpload = useCallback(
     async (file: File) => {
@@ -390,15 +409,25 @@ function GalleryPage() {
           }
         }
 
-        const formData = new FormData();
-        formData.append("image", processedFile);
-        formData.append("githubAccessToken", GITHUB_TOKEN);
-        formData.append("githubUsername", GITHUB_USERNAME);
+        // Convert file to base64
+        const fileReader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          fileReader.onload = () => {
+            const result = fileReader.result as string;
+            const base64 = result.split(",")[1];
+            resolve(base64);
+          };
+          fileReader.onerror = reject;
+          fileReader.readAsDataURL(processedFile);
+        });
 
-        const { data } = await workerAxios.post<any>("/", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+        const imageBase64 = await base64Promise;
+        const data = await uploadImageMutation({
+          imageBase64,
+          fileName: processedFile.name,
+          mimeType: processedFile.type,
+          githubAccessToken: GITHUB_TOKEN,
+          githubUsername: GITHUB_USERNAME,
         });
         if (!data.success || !data.gistId) {
           throw new Error("Invalid response from server");
@@ -429,7 +458,7 @@ function GalleryPage() {
 
         const newImage: UploadedImage = {
           id: data.gistId + "_" + Date.now(),
-          url: blobUrl, // Use blob URL for display
+          url: blobUrl,
           fileName: data.fileName,
           gistId: data.gistId,
           uploadedAt: Date.now(),
@@ -456,7 +485,7 @@ function GalleryPage() {
         setTimeout(() => setUploadState("idle"), 2500);
       }
     },
-    [images, saveToStorage],
+    [images, saveToStorage, uploadImageMutation],
   );
 
   const handleDrop = useCallback(

@@ -66,8 +66,7 @@ const textVariants: Variants = {
 type ActionState = "idle" | "loading" | "success" | "error";
 
 interface PrimeButtonProps
-  extends
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   /** Current interactive state of the button. */
   actionState?: ActionState;
