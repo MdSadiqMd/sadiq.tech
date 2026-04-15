@@ -124,10 +124,18 @@ const gistDBRouter = {
     }
 
     try {
+      console.log("[tRPC] Fetching images from GistDB...");
       const { data: result } = await gistDBAxios.get<any>(
         `/${gistDbId}?collection_name=gallery_images`,
       );
+      
+      console.log("[tRPC] Raw GistDB response keys:", Object.keys(result));
+      console.log("[tRPC] result.data type:", typeof result.data, Array.isArray(result.data) ? "array" : "object");
+      
       const dataObj = result.data || {};
+      const dataKeys = Object.keys(dataObj);
+      console.log(`[tRPC] GistDB data object has ${dataKeys.length} keys`);
+      
       const images = Object.entries(dataObj).map(
         ([uuid, data]: [string, any]) => ({
           uuid,
@@ -135,6 +143,7 @@ const gistDBRouter = {
         }),
       );
 
+      console.log(`[tRPC] Returning ${images.length} images to frontend`);
       return images;
     } catch (error) {
       console.error("Failed to fetch from GistDB:", error);

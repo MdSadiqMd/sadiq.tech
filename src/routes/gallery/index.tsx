@@ -68,12 +68,20 @@ function GalleryPage() {
     ...trpc.gistDB.initCollection.mutationOptions(),
   });
 
-  const { data: listImagesData = [], refetch: refetchImages } = useQuery(
-    trpc.gistDB.listImages.queryOptions(),
-  );
+  const { data: listImagesData = [], refetch: refetchImages } = useQuery({
+    ...trpc.gistDB.listImages.queryOptions(),
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+  });
 
   const dataKey = useMemo(() => {
-    if (!listImagesData || !Array.isArray(listImagesData)) return "";
+    if (!listImagesData || !Array.isArray(listImagesData)) {
+      console.log("[Gallery] No images data from GistDB");
+      return "";
+    }
+    console.log(`[Gallery] GistDB returned ${listImagesData.length} images`);
     return listImagesData
       .map((obj: any) => obj.uuid)
       .sort()
@@ -144,43 +152,79 @@ function GalleryPage() {
       }
 
       setIsLoadingImages(true);
+      console.log(`[Gallery] Starting to load ${listImagesData.length} images from GistDB`);
 
-      const loadedImages = await Promise.allSettled(
-        listImagesData.map(async (obj: any) => {
-          const img = obj.data;
-          const { data: gistData } = await githubAxios.get<any>(
-            `/gists/${img.gistId}`,
-          );
+      // Process images in batches to avoid overwhelming the API
+      const BATCH_SIZE = 10;
+      const allLoadedImages: UploadedImage[] = [];
+      
+      for (let i = 0; i < listImagesData.length; i += BATCH_SIZE) {
+        const batch = listImagesData.slice(i, i + BATCH_SIZE);
+        console.log(`[Gallery] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(listImagesData.length / BATCH_SIZE)} (${batch.length} images)`);
+        
+        const batchResults = await Promise.allSettled(
+          batch.map(async (obj: any, batchIndex: number) => {
+            const globalIndex = i + batchIndex;
+            try {
+              const img = obj.data;
+              console.log(`[Gallery] Loading image ${globalIndex + 1}/${listImagesData.length}: ${img.fileName}`);
+              
+              const { data: gistData } = await githubAxios.get<any>(
+                `/gists/${img.gistId}`,
+                { timeout: 10000 } // 10 second timeout per request
+              );
 
-          const fileData = gistData.files[img.fileName];
-          if (!fileData?.raw_url) {
-            throw new Error(`No raw_url for: ${img.fileName}`);
-          }
+              const fileData = gistData.files[img.fileName];
+              if (!fileData?.raw_url) {
+                throw new Error(`No raw_url for: ${img.fileName}`);
+              }
 
-          const { data: imageData } = await githubRawAxios.get<any>(
-            fileData.raw_url,
-          );
-          const byteCharacters = atob(imageData.data);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], { type: imageData.mimeType });
-          const blobUrl = URL.createObjectURL(blob);
+              const { data: imageData } = await githubRawAxios.get<any>(
+                fileData.raw_url,
+                { timeout: 10000 }
+              );
+              
+              const byteCharacters = atob(imageData.data);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let j = 0; j < byteCharacters.length; j++) {
+                byteNumbers[j] = byteCharacters.charCodeAt(j);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: imageData.mimeType });
+              const blobUrl = URL.createObjectURL(blob);
 
-          return { ...img, url: blobUrl, gistDbUuid: obj.uuid };
-        }),
-      );
-
-      const validImages = loadedImages
-        .filter((result) => result.status === "fulfilled")
-        .map(
-          (result) => (result as PromiseFulfilledResult<UploadedImage>).value,
+              console.log(`[Gallery] ✓ Successfully loaded image ${globalIndex + 1}: ${img.fileName}`);
+              return { ...img, url: blobUrl, gistDbUuid: obj.uuid };
+            } catch (error) {
+              console.error(`[Gallery] ✗ Failed to load image ${globalIndex + 1}:`, error);
+              throw error;
+            }
+          }),
         );
-      validImages.sort((a, b) => b.uploadedAt - a.uploadedAt);
 
-      setImages(validImages);
+        const validBatchImages = batchResults
+          .filter((result) => result.status === "fulfilled")
+          .map(
+            (result) => (result as PromiseFulfilledResult<UploadedImage>).value,
+          );
+        
+        allLoadedImages.push(...validBatchImages);
+        console.log(`[Gallery] Batch complete: ${validBatchImages.length}/${batch.length} succeeded. Total so far: ${allLoadedImages.length}`);
+        
+        // Small delay between batches to avoid rate limiting
+        if (i + BATCH_SIZE < listImagesData.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      const failedCount = listImagesData.length - allLoadedImages.length;
+      console.log(`[Gallery] Total images from GistDB: ${listImagesData.length}`);
+      console.log(`[Gallery] Successfully loaded: ${allLoadedImages.length}`);
+      console.log(`[Gallery] Failed: ${failedCount}`);
+      
+      allLoadedImages.sort((a, b) => b.uploadedAt - a.uploadedAt);
+
+      setImages(allLoadedImages);
       setIsLoadingImages(false);
     };
 
